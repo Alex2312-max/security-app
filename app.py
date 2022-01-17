@@ -2,12 +2,20 @@ from flask import Flask, render_template, request, redirect
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 from cryptography.fernet import Fernet
-
+from flask_limiter import Limiter
+from flask_limiter.util import get_remote_address
 
 app = Flask(__name__)
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///user_information.db'
 db = SQLAlchemy(app)
 PATH_TO_KEY = 'key.key'
+
+
+limiter = Limiter(
+    app,
+    key_func=get_remote_address,
+    default_limits=["200 per day", "50 per hour"]
+)
 
 
 class Data(db.Model):
@@ -47,6 +55,7 @@ def decrypt_function(path_to_key, data):
 
 
 @app.route('/', methods=['POST'])
+@limiter.limit("200 per day")
 def index():
     if request.method == 'POST':
         unorganized_info_user = decrypt_function(PATH_TO_KEY, request.json)
@@ -68,4 +77,4 @@ def index():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    app.run(debug=True)# ssl_context=('cert.pem', 'key.pem'))
